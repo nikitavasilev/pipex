@@ -6,7 +6,7 @@
 #    By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/04/15 23:52:19 by nvasilev          #+#    #+#              #
-#    Updated: 2022/04/17 04:26:02 by nvasilev         ###   ########.fr        #
+#    Updated: 2022/04/17 04:50:48 by nvasilev         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -26,7 +26,8 @@ INCLUDES = -I ./includes/
 #                                 PROGRAM'S SRCS                               #
 ################################################################################
 
-SRCS =			./srcs/main.c
+SRCS =			./srcs/main.c \
+				./srcs/extract_path.c
 
 UTILS =			./utils/ft_split.c \
 				./utils/ft_strlen.c \
