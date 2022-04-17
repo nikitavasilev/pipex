@@ -6,7 +6,7 @@
 #    By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/04/15 23:52:19 by nvasilev          #+#    #+#              #
-#    Updated: 2022/04/15 23:53:22 by nvasilev         ###   ########.fr        #
+#    Updated: 2022/04/17 04:26:02 by nvasilev         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -26,32 +26,14 @@ INCLUDES = -I ./includes/
 #                                 PROGRAM'S SRCS                               #
 ################################################################################
 
-SRCS =			./srcs/main.c \
-				./srcs/create_node.c \
-				./srcs/del_list.c \
-				./srcs/alloc_struct.c \
-				./srcs/swap.c \
-				./srcs/rotate.c \
-				./srcs/rrotate.c \
-				./srcs/print_list.c \
-				./srcs/parser.c \
-				./srcs/fill_stack.c \
-				./srcs/check_dups.c \
-				./srcs/push.c \
-				./srcs/sort.c
+SRCS =			./srcs/main.c
 
-UTILS =			./utils/ft_putchar_fd.c \
-				./utils/ft_putstr_fd.c \
-				./utils/ft_error.c \
-				./utils/ft_isdigit.c \
-				./utils/ft_isspace.c \
-				./utils/ft_issign.c \
-				./utils/ft_split.c \
+UTILS =			./utils/ft_split.c \
 				./utils/ft_strlen.c \
+				./utils/ft_substr.c \
 				./utils/ft_strdup.c \
-				./utils/atoi_err_overflow.c \
-				./utils/strjoin_free_s1.c \
-				./utils/ft_putnbr_fd.c
+				./utils/ft_strncmp.c \
+				./utils/ft_strjoin.c
 
 ################################################################################
 #                                     OBJECTS                                  #
