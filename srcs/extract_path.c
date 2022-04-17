@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/17 04:46:58 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/04/17 04:51:07 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/04/17 06:18:04 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,6 @@ static char	*get_path_envp(char *const *env)
 	}
 	return (NULL);
 }
-
 
 char	**get_paths(char *const envp[])
 {
