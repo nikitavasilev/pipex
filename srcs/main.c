@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/04/19 22:30:16 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/04/22 06:09:22 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,18 +17,36 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <signal.h>
 #include "libft.h"
 #include "pipex.h"
 
-void	child_process(int f1, char **cmd1, int end[2], char *const envp[])
+void	child_process(t_args args, int f1, char **cmd1, int end[2], char *const envp[])
 {
+	ssize_t	i;
+	int		ret_access;
+	char 	*cmd;
+
 	if (dup2(f1, STDIN_FILENO) < 0)
 		exit(EXIT_FAILURE);
 	if (dup2(end[1], STDOUT_FILENO) < 0)
 		exit(EXIT_FAILURE);
 	close(end[0]);
 	close(f1);
-	execve(cmd1[0], cmd1, envp);
+	ret_access = access(cmd1[0], F_OK | X_OK);
+	if (!ret_access)
+		execve(cmd1[0], cmd1, envp);
+	i = -1;
+	while (args.paths[++i])
+	{
+		cmd = ft_strjoin(args.paths[i], cmd1[0]);
+		ret_access = access(cmd, F_OK | X_OK);
+		if (!ret_access)
+			execve(cmd, cmd1, envp);
+		free(cmd);
+	}
+	if (ret_access)
+		perror(cmd1[0]);
 	exit(EXIT_FAILURE);
 }
 
@@ -37,7 +55,7 @@ void	parent_process(t_args args, int f2, char **cmd2, int end[2], char *const en
 	ssize_t	i;
 	int 	status;
 	char 	*cmd;
-	int ret_access;
+	int		ret_access;
 
 	waitpid(-1, &status, 0);
 	if (dup2(f2, STDOUT_FILENO) < 0)
@@ -68,12 +86,13 @@ void	pipex(t_args args, char *const envp[])
 	int		end[2];
 	pid_t	parent;
 
-	pipe(end);
+	if (pipe(end) < 0)
+		exit(EXIT_FAILURE);
 	parent = fork();
 	if (parent < 0)
 		return (perror("Fork"));
 	if (!parent)
-		child_process(args.infile, args.cmds[0], end, envp);
+		child_process(args, args.infile, args.cmds[0], end, envp);
 	else
 		parent_process(args, args.outfile, args.cmds[1], end, envp);
 }
