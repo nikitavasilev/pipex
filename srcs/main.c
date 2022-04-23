@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/04/22 06:09:22 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/04/23 06:07:41 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,36 +21,65 @@
 #include "libft.h"
 #include "pipex.h"
 
-void	child_process(t_args args, int f1, char **cmd1, int end[2], char *const envp[])
+void	first_child(t_args args, int infile, char **cmd1, int end[2], char *const envp[])
 {
 	ssize_t	i;
 	int		ret_access;
-	char 	*cmd;
+	char 	*abs_cmd;
 
-	if (dup2(f1, STDIN_FILENO) < 0)
+	if (dup2(infile, STDIN_FILENO) < 0)
 		exit(EXIT_FAILURE);
 	if (dup2(end[1], STDOUT_FILENO) < 0)
 		exit(EXIT_FAILURE);
 	close(end[0]);
-	close(f1);
+	close(infile);
 	ret_access = access(cmd1[0], F_OK | X_OK);
 	if (!ret_access)
 		execve(cmd1[0], cmd1, envp);
 	i = -1;
 	while (args.paths[++i])
 	{
-		cmd = ft_strjoin(args.paths[i], cmd1[0]);
-		ret_access = access(cmd, F_OK | X_OK);
+		abs_cmd = ft_strjoin(args.paths[i], cmd1[0]);
+		ret_access = access(abs_cmd, F_OK | X_OK);
 		if (!ret_access)
-			execve(cmd, cmd1, envp);
-		free(cmd);
+			execve(abs_cmd, cmd1, envp);
+		free(abs_cmd);
 	}
 	if (ret_access)
 		perror(cmd1[0]);
 	exit(EXIT_FAILURE);
 }
 
-void	parent_process(t_args args, int f2, char **cmd2, int end[2], char *const envp[])
+void	child_process(t_args args, int infile, char **cmd1, int end[2], char *const envp[])
+{
+	ssize_t	i;
+	int		ret_access;
+	char 	*abs_cmd;
+
+	if (dup2(infile, STDIN_FILENO) < 0)
+		exit(EXIT_FAILURE);
+	if (dup2(end[1], STDOUT_FILENO) < 0)
+		exit(EXIT_FAILURE);
+	close(end[0]);
+	close(infile);
+	ret_access = access(cmd1[0], F_OK | X_OK);
+	if (!ret_access)
+		execve(cmd1[0], cmd1, envp);
+	i = -1;
+	while (args.paths[++i])
+	{
+		abs_cmd = ft_strjoin(args.paths[i], cmd1[0]);
+		ret_access = access(abs_cmd, F_OK | X_OK);
+		if (!ret_access)
+			execve(abs_cmd, cmd1, envp);
+		free(abs_cmd);
+	}
+	if (ret_access)
+		perror(cmd1[0]);
+	exit(EXIT_FAILURE);
+}
+
+void	parent_process(t_args args, int outfile, char **last_cmd, int end[2], char *const envp[])
 {
 	ssize_t	i;
 	int 	status;
@@ -58,43 +87,51 @@ void	parent_process(t_args args, int f2, char **cmd2, int end[2], char *const en
 	int		ret_access;
 
 	waitpid(-1, &status, 0);
-	if (dup2(f2, STDOUT_FILENO) < 0)
+	if (dup2(outfile, STDOUT_FILENO) < 0)
 		exit(EXIT_FAILURE);
 	if (dup2(end[0], STDIN_FILENO) < 0)
 		exit(EXIT_FAILURE);
 	close(end[1]);
-	close(f2);
-	ret_access = access(cmd2[0], F_OK | X_OK);
+	close(outfile);
+	ret_access = access(last_cmd[0], F_OK | X_OK);
 	if (ret_access == 0)
-		execve(cmd2[0], cmd2, envp);
+		execve(last_cmd[0], last_cmd, envp);
 	i = -1;
 	while (args.paths[++i])
 	{
-		cmd = ft_strjoin(args.paths[i], cmd2[0]);
+		cmd = ft_strjoin(args.paths[i], last_cmd[0]);
 		ret_access = access(cmd, F_OK | X_OK);
 		if (ret_access == 0)
-			execve(cmd, cmd2, envp);
+			execve(cmd, last_cmd, envp);
 		free(cmd);
 	}
 	if (ret_access == -1)
-		perror(cmd2[0]);
+		perror(last_cmd[0]);
 	exit(EXIT_FAILURE);
 }
 
 void	pipex(t_args args, char *const envp[])
 {
-	int		end[2];
-	pid_t	parent;
+	unsigned int	i;
+	int				end[2];
+	pid_t			parent;
 
-	if (pipe(end) < 0)
-		exit(EXIT_FAILURE);
-	parent = fork();
-	if (parent < 0)
-		return (perror("Fork"));
-	if (!parent)
-		child_process(args, args.infile, args.cmds[0], end, envp);
-	else
-		parent_process(args, args.outfile, args.cmds[1], end, envp);
+	i = 0;
+	first_child(args, args.infile, args.cmds[i], end, envp);
+	i++;
+	while (i < args.cmd_count - 1)
+	{
+		wait(NULL);
+		if (pipe(end) < 0)
+			return (perror("Pipe"), exit(EXIT_FAILURE));
+		parent = fork();
+		if (parent < 0)
+			return (perror("Fork"));
+		if (!parent)
+			child_process(args, args.infile, args.cmds[i], end, envp);
+		i++;
+	}
+	parent_process(args, args.outfile, args.cmds[i], end, envp);
 }
 
 int	main(int argc, char *const argv[], char *const envp[])
@@ -103,6 +140,7 @@ int	main(int argc, char *const argv[], char *const envp[])
 
 	if (argc >= 5)
 	{
+		args.cmd_count = argc - 3;
 		args.infile = open(argv[1], O_RDONLY);
 		args.outfile = open(argv[argc - 1], O_CREAT | O_RDWR | O_TRUNC, 0644);
 		if (args.infile < 0 || args.outfile < 0)
