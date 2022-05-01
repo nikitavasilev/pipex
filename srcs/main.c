@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/04/23 06:07:41 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/01 07:52:59 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,117 +21,97 @@
 #include "libft.h"
 #include "pipex.h"
 
-void	first_child(t_args args, int infile, char **cmd1, int end[2], char *const envp[])
+int	intermediate_childs(t_args args, char **cmd, char *const envp[])
 {
 	ssize_t	i;
 	int		ret_access;
 	char 	*abs_cmd;
+	pid_t	pid;
+	int		fd[2];
 
-	if (dup2(infile, STDIN_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	if (dup2(end[1], STDOUT_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	close(end[0]);
-	close(infile);
-	ret_access = access(cmd1[0], F_OK | X_OK);
-	if (!ret_access)
-		execve(cmd1[0], cmd1, envp);
-	i = -1;
-	while (args.paths[++i])
+	if (pipe(fd) == -1)
+		perror("Pipe");
+	pid = fork();
+	if (pid == -1)
+		perror("Fork");
+	if (pid == 0)
 	{
-		abs_cmd = ft_strjoin(args.paths[i], cmd1[0]);
-		ret_access = access(abs_cmd, F_OK | X_OK);
+		close(fd[0]);
+		dup2(fd[1], STDOUT_FILENO);
+		ret_access = access(cmd[0], F_OK | X_OK);
 		if (!ret_access)
-			execve(abs_cmd, cmd1, envp);
-		free(abs_cmd);
+			execve(cmd[0], cmd, envp);
+		i = -1;
+		while (args.paths[++i])
+		{
+			abs_cmd = ft_strjoin(args.paths[i], cmd[0]);
+			ret_access = access(abs_cmd, F_OK | X_OK);
+			if (!ret_access)
+				return (close(fd[1]), close(fd[0]), execve(abs_cmd, cmd, envp), free(abs_cmd), 0);
+			free(abs_cmd);
+		}
+		if (ret_access)
+			perror(cmd[0]);
 	}
-	if (ret_access)
-		perror(cmd1[0]);
-	exit(EXIT_FAILURE);
+	else
+	{
+		close(fd[1]);
+		dup2(fd[0], STDIN_FILENO);
+		close(fd[0]);
+		waitpid(pid, NULL, 0);
+	}
+	return (EXIT_FAILURE);
 }
 
-void	child_process(t_args args, int infile, char **cmd1, int end[2], char *const envp[])
+void	last_child(t_args args, char **last_cmd, char *const envp[])
 {
 	ssize_t	i;
-	int		ret_access;
-	char 	*abs_cmd;
-
-	if (dup2(infile, STDIN_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	if (dup2(end[1], STDOUT_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	close(end[0]);
-	close(infile);
-	ret_access = access(cmd1[0], F_OK | X_OK);
-	if (!ret_access)
-		execve(cmd1[0], cmd1, envp);
-	i = -1;
-	while (args.paths[++i])
-	{
-		abs_cmd = ft_strjoin(args.paths[i], cmd1[0]);
-		ret_access = access(abs_cmd, F_OK | X_OK);
-		if (!ret_access)
-			execve(abs_cmd, cmd1, envp);
-		free(abs_cmd);
-	}
-	if (ret_access)
-		perror(cmd1[0]);
-	exit(EXIT_FAILURE);
-}
-
-void	parent_process(t_args args, int outfile, char **last_cmd, int end[2], char *const envp[])
-{
-	ssize_t	i;
-	int 	status;
 	char 	*cmd;
 	int		ret_access;
+	pid_t	pid;
 
-	waitpid(-1, &status, 0);
-	if (dup2(outfile, STDOUT_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	if (dup2(end[0], STDIN_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	close(end[1]);
-	close(outfile);
-	ret_access = access(last_cmd[0], F_OK | X_OK);
-	if (ret_access == 0)
-		execve(last_cmd[0], last_cmd, envp);
-	i = -1;
-	while (args.paths[++i])
+	pid = fork();
+	if (pid < 0)
+		return (perror("Fork"));
+	if (pid == 0)
 	{
-		cmd = ft_strjoin(args.paths[i], last_cmd[0]);
-		ret_access = access(cmd, F_OK | X_OK);
+		ret_access = access(last_cmd[0], F_OK | X_OK);
 		if (ret_access == 0)
-			execve(cmd, last_cmd, envp);
-		free(cmd);
+			execve(last_cmd[0], last_cmd, envp);
+		i = -1;
+		while (args.paths[++i])
+		{
+			cmd = ft_strjoin(args.paths[i], last_cmd[0]);
+			ret_access = access(cmd, F_OK | X_OK);
+			if (ret_access == 0)
+				execve(cmd, last_cmd, envp);
+		}
+		if (ret_access == -1)
+			perror(last_cmd[0]);
+		exit(EXIT_FAILURE);
 	}
-	if (ret_access == -1)
-		perror(last_cmd[0]);
-	exit(EXIT_FAILURE);
 }
 
 void	pipex(t_args args, char *const envp[])
 {
 	unsigned int	i;
-	int				end[2];
-	pid_t			parent;
+	int				status;
 
+	if (dup2(args.infile, STDIN_FILENO) < 0)
+		exit(EXIT_FAILURE);
+	close(args.infile);
 	i = 0;
-	first_child(args, args.infile, args.cmds[i], end, envp);
-	i++;
 	while (i < args.cmd_count - 1)
 	{
-		wait(NULL);
-		if (pipe(end) < 0)
-			return (perror("Pipe"), exit(EXIT_FAILURE));
-		parent = fork();
-		if (parent < 0)
-			return (perror("Fork"));
-		if (!parent)
-			child_process(args, args.infile, args.cmds[i], end, envp);
+		intermediate_childs(args, args.cmds[i], envp);
+		waitpid(-1, &status, 0);
 		i++;
 	}
-	parent_process(args, args.outfile, args.cmds[i], end, envp);
+	if (dup2(args.outfile, STDOUT_FILENO) < 0)
+		exit(EXIT_FAILURE);
+	close(args.outfile);
+	last_child(args, args.cmds[i], envp);
+	waitpid(-1, &status, 0);
 }
 
 int	main(int argc, char *const argv[], char *const envp[])
@@ -152,21 +132,6 @@ int	main(int argc, char *const argv[], char *const envp[])
 		if (!args.cmds)
 			return (perror("Get_cmds"), 1);
 		pipex(args, envp);
-		/*while (args.paths[0])
-		{
-			printf("%s\n", args.paths[0]);
-			args.paths++;
-		}
-		int i = 0;
-		while (args.cmds[i])
-		{
-			while (args.cmds[i][0])
-			{
-				printf("%s\n", args.cmds[i][0]);
-				args.cmds[i]++;
-			}
-			i++;
-		}*/
 	}
 	return (0);
 }
