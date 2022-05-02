@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/17 04:46:58 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/04/17 06:18:04 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/01 09:21:50 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,5 +56,6 @@ char	**get_paths(char *const envp[])
 		free(tmp);
 		i++;
 	}
+	free(path);
 	return (paths);
 }
