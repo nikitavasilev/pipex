@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/17 06:17:06 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/04/17 06:17:44 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/01 10:09:48 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,9 @@ char	***get_cmds(int argc, char *const argv[])
 	char	***cmds;
 
 	cmds = (char ***)malloc(sizeof(char **) * (argc - 2));
-	cmds[2] = NULL;
+	if (!cmds)
+		return (NULL);
+	cmds[argc - 3] = NULL;
 	i = 0;
 	while (i < argc - 3)
 	{
