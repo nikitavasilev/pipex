@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/01 12:40:35 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/03 00:56:16 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,19 @@
 #include <string.h>
 #include "libft.h"
 #include "pipex.h"
+
+void	error_exit(int errnum, char *str)
+{
+	ft_putstr_fd("pipex: ", 2);
+	if (errnum == -1)
+		ft_putstr_fd("command not found", 2);
+	else
+		ft_putstr_fd(strerror(errnum), 2);
+	ft_putstr_fd(": ", 2);
+	if (str)
+		ft_putstr_fd(str, 2);
+	ft_putchar_fd('\n', 2);
+}
 
 void	close_stds(void)
 {
@@ -72,6 +85,34 @@ void	free_args(t_args args)
 	free_tab(args.paths);
 }
 
+void	exit_failure(t_args args, int fd[2])
+{
+	free_args(args);
+	if (fd)
+	{
+		close(fd[0]);
+		close(fd[1]);
+	}
+	close(args.outfile);
+	close_stds();
+	exit(EXIT_FAILURE);
+}
+
+int	is_dir(char *path)
+{
+	int	fd;
+
+	fd = open(path, O_RDWR);
+	if ((fd == -1) && (errno == EISDIR))
+	{
+		errno = EACCES;
+		return (EISDIR);
+	}
+	if (fd > 0)
+		close(fd);
+	return (0);
+}
+
 int	intermediate_childs(t_args args, char **cmd, char *const envp[])
 {
 	ssize_t	i;
@@ -87,20 +128,17 @@ int	intermediate_childs(t_args args, char **cmd, char *const envp[])
 		perror("Fork");
 	if (pid == 0)
 	{
-		//close(fd[0]);
 		dup2(fd[1], STDOUT_FILENO);
 		if (!cmd[0])
 		{
-			free_args(args);
-			close(fd[0]);
-			close(fd[1]);
-			close(args.outfile);
-			close_stds();
-			exit(EXIT_FAILURE);
+			error_exit(EACCES, cmd[0]);
+			exit_failure(args, fd);
 		}
 		ret_access = access(cmd[0], F_OK | X_OK);
-		if (!ret_access)
+		if (!ret_access && !is_dir(cmd[0]))
+		{
 			return (close(fd[0]), close(fd[1]), execve(cmd[0], cmd, envp));
+		}
 		i = -1;
 		while (args.paths[++i])
 		{
@@ -108,25 +146,14 @@ int	intermediate_childs(t_args args, char **cmd, char *const envp[])
 			if (!abs_cmd)
 				perror("Malloc");
 			ret_access = access(abs_cmd, F_OK | X_OK);
-			if (!ret_access)
+			if (!ret_access && !is_dir(abs_cmd))
 				return (close(fd[0]), close(fd[1]), execve(abs_cmd, cmd, envp));
 			free(abs_cmd);
 		}
-		if (ret_access)
-		{
-			//perror(NULL);
-			char *strs[] = {"/bin/cat", "Makefile", NULL};
-			//dprintf(STDERR_FILENO, "%s\n", strerror(errno));
-			if (execve("/bin/cat", strs, envp) == -1)
-				perror("Execve");
-			dprintf(STDERR_FILENO, "Command not found: %s\n", cmd[0]);
-			free_args(args);
-			close(fd[0]);
-			close(fd[1]);
-			close(args.outfile);
-			close_stds();
-			exit(EXIT_FAILURE);
-		}
+		if (cmd[0][0] != '/')
+			errno = -1;
+		error_exit(errno, cmd[0]);
+		exit_failure(args, fd);
 	}
 	else
 	{
@@ -151,7 +178,7 @@ void	last_child(t_args args, char **last_cmd, char *const envp[])
 	if (pid == 0)
 	{
 		ret_access = access(last_cmd[0], F_OK | X_OK);
-		if (ret_access == 0)
+		if (!ret_access && !is_dir(last_cmd[0]))
 			execve(last_cmd[0], last_cmd, envp);
 		i = -1;
 		while (args.paths[++i])
@@ -160,12 +187,14 @@ void	last_child(t_args args, char **last_cmd, char *const envp[])
 			if (!cmd)
 				perror("Malloc");
 			ret_access = access(cmd, F_OK | X_OK);
-			if (ret_access == 0)
+			if (!ret_access && !is_dir(cmd))
 				execve(cmd, last_cmd, envp);
+			free(cmd);
 		}
-		if (ret_access == -1)
-			perror(last_cmd[0]);
-		exit(EXIT_FAILURE);
+		if (last_cmd[0][0] != '/')
+			errno = -1;
+		error_exit(errno, last_cmd[0]);
+		exit_failure(args, NULL);
 	}
 }
 
