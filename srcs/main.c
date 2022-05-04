@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/03 00:56:16 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/05 01:32:14 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,21 +113,24 @@ int	is_dir(char *path)
 	return (0);
 }
 
-int	intermediate_childs(t_args args, char **cmd, char *const envp[])
+int	intermediate_childs(t_args args, char **cmd, char *const envp[], int fd[2])
 {
 	ssize_t	i;
 	int		ret_access;
 	char 	*abs_cmd;
 	pid_t	pid;
-	int		fd[2];
+	//int		fd[2];
 
-	if (pipe(fd) == -1)
-		perror("Pipe");
+	//if (pipe(fd) == -1)
+	//	perror("Pipe");
 	pid = fork();
 	if (pid == -1)
 		perror("Fork");
 	if (pid == 0)
 	{
+		close(fd[0]);
+		if (dup2(args.infile, STDIN_FILENO) < 0)
+			exit(EXIT_FAILURE);
 		dup2(fd[1], STDOUT_FILENO);
 		if (!cmd[0])
 		{
@@ -136,9 +139,7 @@ int	intermediate_childs(t_args args, char **cmd, char *const envp[])
 		}
 		ret_access = access(cmd[0], F_OK | X_OK);
 		if (!ret_access && !is_dir(cmd[0]))
-		{
 			return (close(fd[0]), close(fd[1]), execve(cmd[0], cmd, envp));
-		}
 		i = -1;
 		while (args.paths[++i])
 		{
@@ -157,15 +158,14 @@ int	intermediate_childs(t_args args, char **cmd, char *const envp[])
 	}
 	else
 	{
-		dup2(fd[0], STDIN_FILENO);
+		//dup2(fd[0], STDIN_FILENO);
 		close(fd[0]);
 		close(fd[1]);
-		waitpid(pid, NULL, 0);
 	}
 	return (EXIT_FAILURE);
 }
 
-void	last_child(t_args args, char **last_cmd, char *const envp[])
+void	last_child(t_args args, char **last_cmd, char *const envp[], int fd[2])
 {
 	ssize_t	i;
 	char 	*cmd;
@@ -177,6 +177,12 @@ void	last_child(t_args args, char **last_cmd, char *const envp[])
 		return (perror("Fork"));
 	if (pid == 0)
 	{
+
+		if (dup2(args.outfile, STDOUT_FILENO) < 0)
+			exit(EXIT_FAILURE);
+		//close(args.outfile);
+		dup2(fd[0], STDIN_FILENO);
+		close(fd[0]);
 		ret_access = access(last_cmd[0], F_OK | X_OK);
 		if (!ret_access && !is_dir(last_cmd[0]))
 			execve(last_cmd[0], last_cmd, envp);
@@ -186,6 +192,7 @@ void	last_child(t_args args, char **last_cmd, char *const envp[])
 			cmd = ft_strjoin(args.paths[i], last_cmd[0]);
 			if (!cmd)
 				perror("Malloc");
+
 			ret_access = access(cmd, F_OK | X_OK);
 			if (!ret_access && !is_dir(cmd))
 				execve(cmd, last_cmd, envp);
@@ -201,24 +208,32 @@ void	last_child(t_args args, char **last_cmd, char *const envp[])
 void	pipex(t_args args, char *const envp[])
 {
 	unsigned int	i;
-	int				status;
+	//int				status;
+	int				fd[2];
 
-	if (dup2(args.infile, STDIN_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	close(args.infile);
+	// if (dup2(args.infile, STDIN_FILENO) < 0)
+	// 	exit(EXIT_FAILURE);
+	//close(args.infile);
 	i = 0;
 	while (i < args.cmd_count - 1)
 	{
-		intermediate_childs(args, args.cmds[i], envp);
-		waitpid(-1, &status, 0);
+		if (pipe(fd) == -1)
+			perror("Pipe");
+		intermediate_childs(args, args.cmds[i], envp, fd);
+
 		i++;
 	}
-	if (dup2(args.outfile, STDOUT_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	close(args.outfile);
+	//if (dup2(args.outfile, STDOUT_FILENO) < 0)
+	//	exit(EXIT_FAILURE);
+	//close(args.outfile);
 	if (args.cmds[i][0])
-		last_child(args, args.cmds[i], envp);
-	waitpid(-1, &status, 0);
+		last_child(args, args.cmds[i], envp, fd);
+
+	//close(args.outfile);
+	//wait(NULL);
+	//wait(NULL);
+
+	dprintf(STDERR_FILENO, "outlast\n");
 }
 
 int	main(int argc, char *const argv[], char *const envp[])
@@ -240,6 +255,9 @@ int	main(int argc, char *const argv[], char *const envp[])
 		if (!args.cmds)
 			return (perror("Get_cmds"), 1);
 		pipex(args, envp);
+		wait(NULL);
+		wait(NULL);
+
 		free_args(args);
 	}
 	close_stds();
