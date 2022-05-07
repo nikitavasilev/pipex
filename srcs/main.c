@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/03 00:56:16 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/07 01:16:11 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,112 +113,114 @@ int	is_dir(char *path)
 	return (0);
 }
 
-int	intermediate_childs(t_args args, char **cmd, char *const envp[])
+void	intermediate_childs(t_args args, char **cmd, char *const envp[], int fd[2])
 {
 	ssize_t	i;
 	int		ret_access;
 	char 	*abs_cmd;
-	pid_t	pid;
-	int		fd[2];
 
-	if (pipe(fd) == -1)
-		perror("Pipe");
-	pid = fork();
-	if (pid == -1)
-		perror("Fork");
-	if (pid == 0)
+	if (!strcmp(args.cmds[0][0], cmd[0]))
 	{
-		dup2(fd[1], STDOUT_FILENO);
-		if (!cmd[0])
-		{
-			error_exit(EACCES, cmd[0]);
-			exit_failure(args, fd);
-		}
-		ret_access = access(cmd[0], F_OK | X_OK);
-		if (!ret_access && !is_dir(cmd[0]))
-		{
-			return (close(fd[0]), close(fd[1]), execve(cmd[0], cmd, envp));
-		}
-		i = -1;
-		while (args.paths[++i])
-		{
-			abs_cmd = ft_strjoin(args.paths[i], cmd[0]);
-			if (!abs_cmd)
-				perror("Malloc");
-			ret_access = access(abs_cmd, F_OK | X_OK);
-			if (!ret_access && !is_dir(abs_cmd))
-				return (close(fd[0]), close(fd[1]), execve(abs_cmd, cmd, envp));
-			free(abs_cmd);
-		}
-		if (cmd[0][0] != '/')
-			errno = -1;
-		error_exit(errno, cmd[0]);
+		if (dup2(args.infile, STDIN_FILENO ) < 0)
+			return (perror("dup2 infile"), exit(EXIT_FAILURE));
+	}
+	if (dup2(fd[1], STDOUT_FILENO ) == -1)
+		return (perror("dup2 pipefd"),exit(EXIT_FAILURE));
+	close(fd[0]);
+	close(fd[1]);
+	close(args.infile);
+	if (!cmd[0])
+	{
+		error_exit(EACCES, cmd[0]);
 		exit_failure(args, fd);
 	}
-	else
+	ret_access = access(cmd[0], F_OK | X_OK);
+	if (!ret_access && !is_dir(cmd[0]))
+		execve(cmd[0], cmd, envp);
+	i = -1;
+	while (args.paths[++i])
 	{
-		dup2(fd[0], STDIN_FILENO);
-		close(fd[0]);
-		close(fd[1]);
-		waitpid(pid, NULL, 0);
+		abs_cmd = ft_strjoin(args.paths[i], cmd[0]);
+		if (!abs_cmd)
+			perror("Malloc");
+		ret_access = access(abs_cmd, F_OK | X_OK);
+		if (!ret_access && !is_dir(abs_cmd))
+			execve(abs_cmd, cmd, envp);
+		free(abs_cmd);
 	}
-	return (EXIT_FAILURE);
+	if (cmd[0][0] != '/')
+		errno = -1;
+	error_exit(errno, cmd[0]);
+	exit_failure(args, fd);
 }
 
-void	last_child(t_args args, char **last_cmd, char *const envp[])
+void	last_child(t_args args, char **last_cmd, char *const envp[], int fd[2])
 {
 	ssize_t	i;
 	char 	*cmd;
 	int		ret_access;
-	pid_t	pid;
 
-	pid = fork();
-	if (pid < 0)
-		return (perror("Fork"));
-	if (pid == 0)
+	if (dup2(fd[0], STDIN_FILENO) < 0)
+	  	return (perror("dup2 infile"), exit(EXIT_FAILURE));
+	if (dup2(args.outfile, STDOUT_FILENO) < 0)
+		exit(EXIT_FAILURE);
+	close(args.outfile);
+	close(fd[1]);
+	close(fd[0]);
+	ret_access = access(last_cmd[0], F_OK | X_OK);
+	if (!ret_access && !is_dir(last_cmd[0]))
+		execve(last_cmd[0], last_cmd, envp);
+	i = -1;
+	while (args.paths[++i])
 	{
-		ret_access = access(last_cmd[0], F_OK | X_OK);
-		if (!ret_access && !is_dir(last_cmd[0]))
-			execve(last_cmd[0], last_cmd, envp);
-		i = -1;
-		while (args.paths[++i])
-		{
-			cmd = ft_strjoin(args.paths[i], last_cmd[0]);
-			if (!cmd)
-				perror("Malloc");
-			ret_access = access(cmd, F_OK | X_OK);
-			if (!ret_access && !is_dir(cmd))
-				execve(cmd, last_cmd, envp);
-			free(cmd);
-		}
-		if (last_cmd[0][0] != '/')
-			errno = -1;
-		error_exit(errno, last_cmd[0]);
-		exit_failure(args, NULL);
+		cmd = ft_strjoin(args.paths[i], last_cmd[0]);
+		if (!cmd)
+			perror("Malloc");
+		ret_access = access(cmd, F_OK | X_OK);
+		if (!ret_access && !is_dir(cmd))
+			execve(cmd, last_cmd, envp);
+		free(cmd);
 	}
+	if (last_cmd[0][0] != '/')
+		errno = -1;
+	error_exit(errno, last_cmd[0]);
+	exit_failure(args, NULL);
 }
 
 void	pipex(t_args args, char *const envp[])
 {
-	unsigned int	i;
-	int				status;
+	ssize_t	i;
+	int		status;
+	int		fd[2];
+	pid_t	cpid;
 
-	if (dup2(args.infile, STDIN_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	close(args.infile);
-	i = 0;
-	while (i < args.cmd_count - 1)
+	i = -1;
+	while (++i < args.cmd_count - 1)
 	{
-		intermediate_childs(args, args.cmds[i], envp);
-		waitpid(-1, &status, 0);
-		i++;
+		if (pipe(fd) == -1)
+			perror("Pipe");
+		cpid = fork();
+		if (cpid == 0)
+			intermediate_childs(args, args.cmds[i], envp, fd);
+		// close(fd[1]);
+		// if (dup2(fd[0], STDIN_FILENO) < 0)
+	 	// 	return (perror("dup2 infile"), exit(EXIT_FAILURE));
+		//close(fd[0]);
 	}
-	if (dup2(args.outfile, STDOUT_FILENO) < 0)
-		exit(EXIT_FAILURE);
-	close(args.outfile);
 	if (args.cmds[i][0])
-		last_child(args, args.cmds[i], envp);
-	waitpid(-1, &status, 0);
+	{
+		cpid = fork();
+		if (cpid == 0)
+			last_child(args, args.cmds[i], envp, fd);
+	}
+	close(fd[0]);
+	close(fd[1]);
+	close(args.infile);
+	close(args.outfile);
+	i = 0;
+	while (i++ < args.cmd_count)
+		wait(&status);
+	//while (wait(&status) > 0);
 }
 
 int	main(int argc, char *const argv[], char *const envp[])
