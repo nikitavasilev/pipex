@@ -6,12 +6,16 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:53:52 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/04/23 04:37:06 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/09 07:51:35 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef PIPEX_H
 # define PIPEX_H
+
+# define READ_END 0
+# define WRITE_END 1
+# define TEMP_READ_END 2
 
 typedef struct s_args
 {
