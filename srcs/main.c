@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/09 07:50:52 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/09 09:17:22 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,9 +161,9 @@ void	intermediate_children(t_args args, char **cmd, char *const envp[], int fd[3
 		return (perror("dup2 infile"), exit(EXIT_FAILURE));
 	if (dup2(fd[WRITE_END], STDOUT_FILENO ) == -1)
 		return (perror("dup2 pipefd"),exit(EXIT_FAILURE));
-	close(fd[2]);
-	close(fd[WRITE_END]);
 	close(fd[READ_END]);
+	close(fd[TEMP_READ_END]);
+	close(fd[WRITE_END]);
 	dprintf(STDERR_FILENO, "%s\n", cmd[0]);
 	if (!cmd[0])
 	{
@@ -203,7 +203,7 @@ void	last_child(t_args args, char **last_cmd, char *const envp[], int fd[3])
 	close(args.outfile);
 	close(fd[READ_END]);
 	close(fd[WRITE_END]);
-	close(fd[2]);
+	close(fd[TEMP_READ_END]);
 	ret_access = access(last_cmd[0], F_OK | X_OK);
 	if (!ret_access && !is_dir(last_cmd[0]))
 		execve(last_cmd[0], last_cmd, envp);
@@ -228,7 +228,6 @@ void	pipex(t_args args, char *const envp[])
 {
 	ssize_t	i;
 	int		status;
-	//int		fd[2];
 	int		fd[3];
 	pid_t	cpid;
 
@@ -243,8 +242,8 @@ void	pipex(t_args args, char *const envp[])
 		else if (cpid == 0 && i != 0)
 			intermediate_children(args, args.cmds[i], envp, fd);
 		close(fd[WRITE_END]);
-		close(fd[2]);
-		fd[2] = fd[0];
+		close(fd[TEMP_READ_END]);
+		fd[TEMP_READ_END] = fd[READ_END];
 	}
 	if (args.cmds[i][0])
 	{
@@ -254,7 +253,7 @@ void	pipex(t_args args, char *const envp[])
 	}
 	close(fd[READ_END]);
 	close(fd[WRITE_END]);
-	close(fd[2]);
+	close(fd[TEMP_READ_END]);
 	close(args.infile);
 	close(args.outfile);
 	i = 0;
