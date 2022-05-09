@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/07 01:16:11 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/09 07:50:52 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,21 +113,18 @@ int	is_dir(char *path)
 	return (0);
 }
 
-void	intermediate_childs(t_args args, char **cmd, char *const envp[], int fd[2])
+void	first_child(t_args args, char **cmd, char *const envp[], int fd[2])
 {
 	ssize_t	i;
 	int		ret_access;
 	char 	*abs_cmd;
 
-	if (!strcmp(args.cmds[0][0], cmd[0]))
-	{
-		if (dup2(args.infile, STDIN_FILENO ) < 0)
-			return (perror("dup2 infile"), exit(EXIT_FAILURE));
-	}
-	if (dup2(fd[1], STDOUT_FILENO ) == -1)
+	if (dup2(args.infile, STDIN_FILENO ) < 0)
+		return (perror("dup2 infile"), exit(EXIT_FAILURE));
+	if (dup2(fd[WRITE_END], STDOUT_FILENO ) == -1)
 		return (perror("dup2 pipefd"),exit(EXIT_FAILURE));
-	close(fd[0]);
-	close(fd[1]);
+	close(fd[READ_END]);
+	close(fd[WRITE_END]);
 	close(args.infile);
 	if (!cmd[0])
 	{
@@ -154,19 +151,59 @@ void	intermediate_childs(t_args args, char **cmd, char *const envp[], int fd[2])
 	exit_failure(args, fd);
 }
 
-void	last_child(t_args args, char **last_cmd, char *const envp[], int fd[2])
+void	intermediate_children(t_args args, char **cmd, char *const envp[], int fd[3])
+{
+	ssize_t	i;
+	int		ret_access;
+	char 	*abs_cmd;
+
+	if (dup2(fd[2], STDIN_FILENO) < 0)
+		return (perror("dup2 infile"), exit(EXIT_FAILURE));
+	if (dup2(fd[WRITE_END], STDOUT_FILENO ) == -1)
+		return (perror("dup2 pipefd"),exit(EXIT_FAILURE));
+	close(fd[2]);
+	close(fd[WRITE_END]);
+	close(fd[READ_END]);
+	dprintf(STDERR_FILENO, "%s\n", cmd[0]);
+	if (!cmd[0])
+	{
+		error_exit(EACCES, cmd[0]);
+		exit_failure(args, fd);
+	}
+	ret_access = access(cmd[0], F_OK | X_OK);
+	if (!ret_access && !is_dir(cmd[0]))
+		execve(cmd[0], cmd, envp);
+	i = -1;
+	while (args.paths[++i])
+	{
+		abs_cmd = ft_strjoin(args.paths[i], cmd[0]);
+		if (!abs_cmd)
+			perror("Malloc");
+		ret_access = access(abs_cmd, F_OK | X_OK);
+		if (!ret_access && !is_dir(abs_cmd))
+			execve(abs_cmd, cmd, envp);
+		free(abs_cmd);
+	}
+	if (cmd[0][0] != '/')
+		errno = -1;
+	error_exit(errno, cmd[0]);
+	exit_failure(args, fd);
+}
+
+void	last_child(t_args args, char **last_cmd, char *const envp[], int fd[3])
 {
 	ssize_t	i;
 	char 	*cmd;
 	int		ret_access;
 
-	if (dup2(fd[0], STDIN_FILENO) < 0)
+	if (dup2(fd[READ_END], STDIN_FILENO) < 0)
 	  	return (perror("dup2 infile"), exit(EXIT_FAILURE));
 	if (dup2(args.outfile, STDOUT_FILENO) < 0)
-		exit(EXIT_FAILURE);
+		return (perror("dup2 outfile"), exit(EXIT_FAILURE));
 	close(args.outfile);
-	close(fd[1]);
-	close(fd[0]);
+	close(fd[READ_END]);
+	close(fd[WRITE_END]);
+	close(fd[2]);
 	ret_access = access(last_cmd[0], F_OK | X_OK);
 	if (!ret_access && !is_dir(last_cmd[0]))
 		execve(last_cmd[0], last_cmd, envp);
@@ -191,7 +228,8 @@ void	pipex(t_args args, char *const envp[])
 {
 	ssize_t	i;
 	int		status;
-	int		fd[2];
+	//int		fd[2];
+	int		fd[3];
 	pid_t	cpid;
 
 	i = -1;
@@ -200,12 +238,13 @@ void	pipex(t_args args, char *const envp[])
 		if (pipe(fd) == -1)
 			perror("Pipe");
 		cpid = fork();
-		if (cpid == 0)
-			intermediate_childs(args, args.cmds[i], envp, fd);
-		// close(fd[1]);
-		// if (dup2(fd[0], STDIN_FILENO) < 0)
-	 	// 	return (perror("dup2 infile"), exit(EXIT_FAILURE));
-		//close(fd[0]);
+		if (cpid == 0 && i == 0)
+			first_child(args, args.cmds[i], envp, fd);
+		else if (cpid == 0 && i != 0)
+			intermediate_children(args, args.cmds[i], envp, fd);
+		close(fd[WRITE_END]);
+		close(fd[2]);
+		fd[2] = fd[0];
 	}
 	if (args.cmds[i][0])
 	{
@@ -213,8 +252,9 @@ void	pipex(t_args args, char *const envp[])
 		if (cpid == 0)
 			last_child(args, args.cmds[i], envp, fd);
 	}
-	close(fd[0]);
-	close(fd[1]);
+	close(fd[READ_END]);
+	close(fd[WRITE_END]);
+	close(fd[2]);
 	close(args.infile);
 	close(args.outfile);
 	i = 0;
