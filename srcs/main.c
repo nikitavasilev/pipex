@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:54:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/10 09:35:13 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/11 23:53:39 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,9 +42,9 @@ int	pipex(t_args args, char *const envp[])
 		if (cpid[i] == -1)
 			return (print_err(errno, __FILE__, __LINE__ - 2),
 				exit_failure(args, fd), 1);
-		if (cpid == 0 && i == 0)
+		if (cpid[i] == 0 && i == 0)
 			first_child(args, args.cmds[i], envp, fd);
-		else if (cpid == 0 && i != 0)
+		else if (cpid[i] == 0 && i != 0)
 			inter_children(args, args.cmds[i], envp, fd);
 		close(fd[WRITE_END]);
 		if (fd[TEMP_READ_END] > 0)
