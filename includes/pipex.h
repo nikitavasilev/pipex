@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/04/15 23:53:52 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/09 07:51:35 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/09 17:56:05 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,5 +28,15 @@ typedef struct s_args
 
 char	**get_paths(char *const envp[]);
 char	***get_cmds(int argc, char *const argv[]);
+void	free_args(t_args args);
+void	close_stdio(void);
+void	print_err(int errnum, char *str, int line);
+void	exit_failure(t_args args, int fd[3]);
+int		init_args(t_args *args, int ac, char *const av[], char *const ep[]);
+int		is_dir(char *path);
+void	exec_cmd(t_args args, char **cmd, char *const envp[]);
+void	first_child(t_args args, char **cmd, char *const envp[], int fd[3]);
+void	inter_children(t_args args, char **cmd, char *const envp[], int fd[3]);
+void	last_child(t_args args, char **cmd, char *const envp[], int fd[3]);
 
 #endif
