@@ -6,7 +6,7 @@
 #    By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/04/15 23:52:19 by nvasilev          #+#    #+#              #
-#    Updated: 2022/05/02 21:16:50 by nvasilev         ###   ########.fr        #
+#    Updated: 2022/05/09 18:09:37 by nvasilev         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -28,16 +28,25 @@ INCLUDES = -I ./includes/
 
 SRCS =			./srcs/main.c \
 				./srcs/extract_path.c \
-				./srcs/get_cmds.c
+				./srcs/get_cmds.c \
+				./srcs/free_args.c \
+				./srcs/close_stdio.c \
+				./srcs/print_err.c \
+				./srcs/exit_failure.c \
+				./srcs/init_args.c \
+				./srcs/is_dir.c \
+				./srcs/exec_cmd.c \
+				./srcs/child_procs.c
 
 UTILS =			./utils/ft_split.c \
 				./utils/ft_strlen.c \
-				./utils/ft_substr.c \
 				./utils/ft_strdup.c \
 				./utils/ft_strncmp.c \
 				./utils/ft_strjoin.c \
 				./utils/ft_putchar_fd.c \
-				./utils/ft_putstr_fd.c
+				./utils/ft_putstr_fd.c \
+				./utils/ft_strchr.c \
+				./utils/ft_putnbr_fd.c
 
 ################################################################################
 #                                     OBJECTS                                  #
