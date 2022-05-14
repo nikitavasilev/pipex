@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/09 17:25:40 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/09 17:27:40 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/12 05:58:17 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include "pipex.h"
 
-void	exit_failure(t_args args, int fd[3])
+void	exit_failure(t_args args, int fd[3], int status)
 {
 	if (fd)
 	{
@@ -31,5 +31,5 @@ void	exit_failure(t_args args, int fd[3])
 		close(args.outfile);
 	close_stdio();
 	free_args(args);
-	exit(EXIT_FAILURE);
+	exit(status);
 }
