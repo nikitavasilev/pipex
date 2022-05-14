@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/09 17:29:38 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/09 17:47:15 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/12 06:30:28 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,9 +22,10 @@ int	init_args(t_args *args, int argc, char *const argv[], char *const envp[])
 	args->infile = -1;
 	args->outfile = -1;
 	args->cmd_count = argc - 3;
+	args->cpid = NULL;
 	args->infile = open(argv[1], O_RDONLY);
 	if (args->infile < 0)
-		return (print_err(errno, __FILE__, __LINE__ - 2), 0);
+		print_err_open(errno, argv[1]);
 	args->outfile = open(argv[argc - 1], O_CREAT | O_RDWR | O_TRUNC, 0644);
 	if (args->outfile < 0)
 		return (print_err(errno, __FILE__, __LINE__ - 2), 0);
@@ -33,6 +34,9 @@ int	init_args(t_args *args, int argc, char *const argv[], char *const envp[])
 		return (print_err(errno, __FILE__, __LINE__ - 2), 0);
 	args->cmds = get_cmds(argc, argv);
 	if (!args->cmds)
+		return (print_err(errno, __FILE__, __LINE__ - 2), 0);
+	args->cpid = (pid_t *)malloc(sizeof(pid_t) * args->cmd_count);
+	if (!args->cpid)
 		return (print_err(errno, __FILE__, __LINE__ - 2), 0);
 	return (1);
 }
