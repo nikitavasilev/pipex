@@ -6,7 +6,7 @@
 #    By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/04/15 23:52:19 by nvasilev          #+#    #+#              #
-#    Updated: 2022/05/09 18:09:37 by nvasilev         ###   ########.fr        #
+#    Updated: 2022/05/12 05:54:15 by nvasilev         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -36,7 +36,8 @@ SRCS =			./srcs/main.c \
 				./srcs/init_args.c \
 				./srcs/is_dir.c \
 				./srcs/exec_cmd.c \
-				./srcs/child_procs.c
+				./srcs/child_procs.c \
+				./srcs/pipex.c
 
 UTILS =			./utils/ft_split.c \
 				./utils/ft_strlen.c \
@@ -74,5 +75,7 @@ fclean:	clean
 	$(RM) $(NAME)
 
 re:	fclean all
+
+bonus:	all
 
 .PHONY: all clean fclean re
