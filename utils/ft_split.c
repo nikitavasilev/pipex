@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2020/12/20 17:50:34 by nvasilev          #+#    #+#             */
-/*   Updated: 2021/12/30 04:49:26 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/12 06:51:47 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,7 @@ char	**ft_split(char const *s, char c)
 		while (((char *)s)[i] != c && ((char *)s)[i])
 			i++;
 		res[row] = malloc(i - start + 1);
-		if (!res)
+		if (!res[row])
 			return (free_if_error(res));
 		str_fill(res[row], s + start, i - start);
 		row++;
