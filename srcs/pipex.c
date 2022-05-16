@@ -6,7 +6,7 @@
 /*   By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/12 05:40:03 by nvasilev          #+#    #+#             */
-/*   Updated: 2022/05/12 05:42:22 by nvasilev         ###   ########.fr       */
+/*   Updated: 2022/05/16 06:07:32 by nvasilev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,15 +16,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include "pipex.h"
-
-static void	init_tab(int *tab, unsigned int size)
-{
-	unsigned int	i;
-
-	i = 0;
-	while (i < size)
-		tab[i++] = 0;
-}
+#include "libft.h"
 
 static int	wait_for_child(pid_t *cpid, unsigned int max_proc)
 {
@@ -43,21 +35,16 @@ static int	wait_for_child(pid_t *cpid, unsigned int max_proc)
 	return (last_cmd_status);
 }
 
-static int	exit_status(int status)
+static int	*close_write_n_cpy(int fd[3])
 {
-	if (errno == -1 || errno == ENOENT)
-		return (127);
-	if (errno == EACCES || errno == EISDIR
-		|| errno == EPERM || errno == ENOEXEC || errno == EINVAL)
-		return (126);
-	if (WIFSIGNALED(status))
-		return (128 + WTERMSIG(status));
-	if (WIFEXITED(status))
-		return (WEXITSTATUS(status));
-	return (0);
+	close(fd[WRITE_END]);
+	if (fd[TEMP_READ_END] > 0)
+		close(fd[TEMP_READ_END]);
+	fd[TEMP_READ_END] = fd[READ_END];
+	return (fd);
 }
 
-static int	pipeline(t_args args, int fd[3], char *const envp[])
+static int	hd_pl(t_args args, int fd[3], char *const ep[], char *const av[])
 {
 	ssize_t	i;
 
@@ -71,26 +58,54 @@ static int	pipeline(t_args args, int fd[3], char *const envp[])
 		if (args.cpid[i] == -1)
 			return (print_err(errno, __FILE__, __LINE__ - 2),
 				exit_failure(args, fd, EXIT_FAILURE), 1);
-		if (args.cpid[i] == 0 && i == 0)
-			first_child(args, args.cmds[i], envp, fd);
+		if (i == 0)
+		{
+			if (args.cpid[i] == 0)
+				here_doc(av[2], fd, args);
+			close(fd[WRITE_END]);
+			wait(NULL);
+		}
 		else if (args.cpid[i] == 0 && i != 0)
-			inter_children(args, args.cmds[i], envp, fd);
-		close(fd[WRITE_END]);
-		if (fd[TEMP_READ_END] > 0)
-			close(fd[TEMP_READ_END]);
-		fd[TEMP_READ_END] = fd[READ_END];
+			inter_children(args, args.cmds[i], ep, fd);
+		fd = close_write_n_cpy(fd);
 	}
 	return (i);
 }
 
-int	pipex(t_args args, char *const envp[])
+static int	pipeline(t_args args, int fd[3], char *const ep[])
+{
+	ssize_t	i;
+
+	i = -1;
+	while (++i < args.cmd_count - 1)
+	{
+		if (pipe(fd) == -1)
+			return (print_err(errno, __FILE__, __LINE__ - 1),
+				exit_failure(args, fd, EXIT_FAILURE), 1);
+		args.cpid[i] = fork();
+		if (args.cpid[i] == -1)
+			return (print_err(errno, __FILE__, __LINE__ - 2),
+				exit_failure(args, fd, EXIT_FAILURE), 1);
+		else if (args.cpid[i] == 0 && i == 0)
+			first_child(args, args.cmds[i], ep, fd);
+		else if (args.cpid[i] == 0 && i != 0)
+			inter_children(args, args.cmds[i], ep, fd);
+		fd = close_write_n_cpy(fd);
+	}
+	return (i);
+}
+
+int	pipex(t_args args, char *const envp[], char *const argv[])
 {
 	ssize_t	i;
 	int		status;
 	int		fd[3];
 
 	init_tab(fd, 3);
-	i = pipeline(args, fd, envp);
+	if (args.heredoc)
+		i = hd_pl(args, fd, envp, argv);
+	else
+		i = pipeline(args, fd, envp);
 	args.cpid[i] = fork();
 	if (args.cpid[i] == -1)
 		return (print_err(errno, __FILE__, __LINE__ - 2),
