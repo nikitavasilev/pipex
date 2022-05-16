@@ -6,7 +6,7 @@
 #    By: nvasilev <nvasilev@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/04/15 23:52:19 by nvasilev          #+#    #+#              #
-#    Updated: 2022/05/12 05:54:15 by nvasilev         ###   ########.fr        #
+#    Updated: 2022/05/16 06:05:20 by nvasilev         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -37,7 +37,9 @@ SRCS =			./srcs/main.c \
 				./srcs/is_dir.c \
 				./srcs/exec_cmd.c \
 				./srcs/child_procs.c \
-				./srcs/pipex.c
+				./srcs/pipex.c \
+				./srcs/heredoc.c \
+				./srcs/exit_status.c
 
 UTILS =			./utils/ft_split.c \
 				./utils/ft_strlen.c \
@@ -47,7 +49,9 @@ UTILS =			./utils/ft_split.c \
 				./utils/ft_putchar_fd.c \
 				./utils/ft_putstr_fd.c \
 				./utils/ft_strchr.c \
-				./utils/ft_putnbr_fd.c
+				./utils/ft_putnbr_fd.c \
+				./utils/ft_substr.c \
+				./utils/get_next_line.c
 
 ################################################################################
 #                                     OBJECTS                                  #
